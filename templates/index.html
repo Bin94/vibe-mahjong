@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>麻雀役番查询器 | Vibe Mahjong</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Noto+Sans+SC:wght@300;400;500;700;900&family=Noto+Serif+SC:wght@400;700;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body data-theme="cyber">
+    <!-- 粒子背景 -->
+    <canvas id="particle-canvas"></canvas>
+    <canvas id="gold-particle-canvas"></canvas>
+
+    <!-- 主题切换 -->
+    <button class="theme-toggle" id="theme-toggle" title="切换主题">
+        <span class="theme-icon cyber-icon">⚡</span>
+        <span class="theme-icon wa-icon" style="display:none">🎋</span>
+    </button>
+
+    <!-- 统一导航栏 -->
+    <nav class="global-nav">
+        <a href="/" class="nav-logo">
+            <span class="logo-bracket">&lt;</span>Vibe<span class="logo-accent">MJ</span><span class="logo-bracket">/&gt;</span>
+        </a>
+        <div class="nav-links">
+            <a href="/" class="nav-link active">役种查询</a>
+            <a href="/hand-analyzer" class="nav-link">手牌分析</a>
+            <a href="/fu-calculator" class="nav-link">符数计算</a>
+        </div>
+    </nav>
+
+    <!-- 主容器 -->
+    <div class="app-container">
+        <header class="header">
+            <h1 class="page-title">役种番数查询</h1>
+            <p class="subtitle">日本麻雀 · 雀魂规则 · 46种役</p>
+        </header>
+
+        <!-- 搜索区域 -->
+        <div class="search-section">
+            <div class="search-box">
+                <svg class="search-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="11" cy="11" r="8"/>
+                    <path d="m21 21-4.35-4.35"/>
+                </svg>
+                <input type="text" id="search-input" placeholder="搜索役种名称、日文、描述... 按 / 快速搜索" autocomplete="off">
+                <div class="search-glow"></div>
+            </div>
+            <div class="search-hint">
+                <span class="hint-item">🔍 支持名称 / 日文 / 标签搜索</span>
+                <span class="hint-item">📊 共 {{ yaku_list|length }} 种役</span>
+                <span class="hint-item">🎴 点击卡片查看牌型示例</span>
+            </div>
+        </div>
+
+        <!-- 分类筛选 -->
+        <div class="category-filter">
+            <button class="category-btn active" data-category="">全部</button>
+            <button class="category-btn" data-category="1番">1番</button>
+            <button class="category-btn" data-category="2番">2番</button>
+            <button class="category-btn" data-category="3番">3番</button>
+            <button class="category-btn" data-category="6番">6番</button>
+            <button class="category-btn" data-category="满贯">满贯</button>
+            <button class="category-btn yakuman" data-category="役满">役满</button>
+            <button class="category-btn double-yakuman" data-category="双倍役满">双倍役满</button>
+        </div>
+
+        <!-- 统计信息 -->
+        <div class="stats-bar">
+            <div class="stat-pill">
+                <span class="pill-label">显示结果</span>
+                <span class="pill-value" id="result-count">{{ yaku_list|length }}</span>
+            </div>
+            <div class="stat-pill">
+                <span class="pill-label">当前筛选</span>
+                <span class="pill-value" id="current-filter">全部</span>
+            </div>
+        </div>
+
+        <!-- 役种列表 -->
+        <div class="yaku-grid" id="yaku-grid">
+            {% for yaku in yaku_list %}
+            <div class="yaku-card {% if yaku.category in ['役满', '双倍役满'] %}yakuman-card{% endif %}" data-id="{{ yaku.id }}" data-category="{{ yaku.category }}">
+                <div class="card-glow"></div>
+                <div class="card-shine"></div>
+                <div class="card-content">
+                    <div class="card-header">
+                        <div class="han-badge {% if yaku.category == '役满' %}yakuman{% elif yaku.category == '双倍役满' %}double-yakuman{% endif %}">
+                            {{ yaku.category }}
+                        </div>
+                        <div class="type-badge">{{ yaku.type }}</div>
+                    </div>
+                    <h3 class="card-title">{{ yaku.name }}</h3>
+                    <p class="card-japanese">{{ yaku.japanese }}</p>
+                    
+                    <!-- PNG牌型展示 -->
+                    {% if yaku.tiles_png %}
+                    <div class="card-tiles">
+                        <span class="tiles-label">示例牌型</span>
+                        <div class="tiles-display">
+                            {% for png_url in yaku.tiles_png %}
+                            <img src="{{ png_url }}" class="tile-png" alt="" style="width:22px;height:auto;border-radius:2px;flex-shrink:0;" draggable="false">
+                            {% endfor %}
+                        </div>
+                    </div>
+                    {% endif %}
+                    
+                    <p class="card-description">{{ yaku.description }}</p>
+                    <div class="card-tags">
+                        {% for tag in yaku.tags %}
+                        <span class="tag">{{ tag }}</span>
+                        {% endfor %}
+                    </div>
+                    <div class="card-arrow">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M5 12h14M12 5l7 7-7 7"/>
+                        </svg>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+
+        <!-- 无结果提示 -->
+        <div class="no-results" id="no-results" style="display: none;">
+            <div class="no-results-icon">
+                <img src="/static/images/mahjong-res/red.png" style="width:60px;height:auto;opacity:0.5;" alt="">
+            </div>
+            <h3>未找到匹配的役种</h3>
+            <p>试试其他关键词或清除筛选条件</p>
+        </div>
+
+        <!-- 页脚 -->
+        <footer class="footer">
+            <p>Vibe Mahjong · 日本麻雀役番查询器</p>
+            <p class="footer-note">数据基于雀魂（Mahjong Soul）规则 | 仅供参考</p>
+        </footer>
+    </div>
+
+    <!-- 详情弹窗 -->
+    <div class="modal-overlay" id="modal-overlay">
+        <div class="modal">
+            <div class="modal-glow"></div>
+            <button class="modal-close" id="modal-close">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M18 6 6 18M6 6l12 12"/>
+                </svg>
+            </button>
+            <div class="modal-content" id="modal-content">
+                <!-- 动态内容 -->
+            </div>
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/mahgen-utils.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+</body>
+</html>

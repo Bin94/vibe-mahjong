@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>手牌分析器 | Vibe Mahjong</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Noto+Sans+SC:wght@300;400;500;700;900&family=Noto+Serif+SC:wght@400;700;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body data-theme="cyber">
+    <canvas id="particle-canvas"></canvas>
+    <canvas id="gold-particle-canvas"></canvas>
+
+    <button class="theme-toggle" id="theme-toggle" title="切换主题">
+        <span class="theme-icon cyber-icon">⚡</span>
+        <span class="theme-icon wa-icon" style="display:none">🎋</span>
+    </button>
+
+    <nav class="global-nav">
+        <a href="/" class="nav-logo">
+            <span class="logo-bracket">&lt;</span>Vibe<span class="logo-accent">MJ</span><span class="logo-bracket">/&gt;</span>
+        </a>
+        <div class="nav-links">
+            <a href="/" class="nav-link">役种查询</a>
+            <a href="/hand-analyzer" class="nav-link active">手牌分析</a>
+            <a href="/fu-calculator" class="nav-link">符数计算</a>
+        </div>
+    </nav>
+
+    <div class="app-container">
+        <header class="header">
+            <h1 class="page-title">手牌分析器</h1>
+            <p class="subtitle">输入手牌 · 自动识别可构成役种 · 听牌提示</p>
+        </header>
+
+        <!-- 当前手牌展示区 -->
+        <div class="hand-display-section">
+            <div class="section-label">当前手牌 <span id="hand-count">0</span>/14</div>
+            <div class="message-area" id="message-area" style="display:none"></div>
+            <div class="hand-display" id="hand-display">
+                <div class="hand-placeholder">点击下方牌选择手牌...</div>
+            </div>
+            <div class="hand-actions">
+                <button class="btn btn-secondary" id="btn-clear">清空</button>
+                <button class="btn btn-secondary" id="btn-random">随机</button>
+                <button class="btn btn-primary" id="btn-analyze">分析手牌</button>
+            </div>
+        </div>
+
+        <!-- 牌选择器 -->
+        <div class="tile-selector-section compact">
+            <div class="tile-filter">
+                <button class="tile-filter-btn active" data-filter="all">全部</button>
+                <button class="tile-filter-btn" data-filter="m">万</button>
+                <button class="tile-filter-btn" data-filter="p">筒</button>
+                <button class="tile-filter-btn" data-filter="s">条</button>
+                <button class="tile-filter-btn" data-filter="z">字</button>
+            </div>
+            <div class="tile-group">
+                <div class="tile-group-items fu-selector" id="tile-selector">
+                    {% for i in range(1, 10) %}
+                    <button class="tile-btn fu-tile-btn" data-tile="m{{ i }}" data-suit="m" title="{{ tile_names['m' ~ i] }}">
+                        <img src="/static/images/mahjong-res/{{ i }}m.png" class="tile-png" alt="" draggable="false">
+                    </button>
+                    {% endfor %}
+                    {% for i in range(1, 10) %}
+                    <button class="tile-btn fu-tile-btn" data-tile="p{{ i }}" data-suit="p" title="{{ tile_names['p' ~ i] }}">
+                        <img src="/static/images/mahjong-res/{{ i }}p.png" class="tile-png" alt="" draggable="false">
+                    </button>
+                    {% endfor %}
+                    {% for i in range(1, 10) %}
+                    <button class="tile-btn fu-tile-btn" data-tile="s{{ i }}" data-suit="s" title="{{ tile_names['s' ~ i] }}">
+                        <img src="/static/images/mahjong-res/{{ i }}s.png" class="tile-png" alt="" draggable="false">
+                    </button>
+                    {% endfor %}
+                    {% for t in ['east', 'south', 'west', 'north', 'white', 'green', 'red'] %}
+                    <button class="tile-btn fu-tile-btn" data-tile="{{ t }}" data-suit="z" title="{{ tile_names[t] }}">
+                        <img src="/static/images/mahjong-res/{{ t }}.png" class="tile-png" alt="" draggable="false">
+                    </button>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+
+        <!-- 分析结果 -->
+        <div class="analysis-result" id="analysis-result" style="display: none;">
+            <!-- 动态插入结果 -->
+        </div>
+
+        <footer class="footer">
+            <p>Vibe Mahjong · 手牌分析器</p>
+            <p class="footer-note">算法仅供参考，部分复杂役种可能识别不全</p>
+        </footer>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/mahgen-utils.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/hand-analyzer.js') }}"></script>
+</body>
+</html>
