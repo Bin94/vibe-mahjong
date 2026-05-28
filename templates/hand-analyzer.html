@@ -35,20 +35,6 @@
             <p class="subtitle">输入手牌 · 自动识别可构成役种 · 听牌提示</p>
         </header>
 
-        <!-- 当前手牌展示区 -->
-        <div class="hand-display-section">
-            <div class="section-label">当前手牌 <span id="hand-count">0</span>/14</div>
-            <div class="message-area" id="message-area" style="display:none"></div>
-            <div class="hand-display" id="hand-display">
-                <div class="hand-placeholder">点击下方牌选择手牌...</div>
-            </div>
-            <div class="hand-actions">
-                <button class="btn btn-secondary" id="btn-clear">清空</button>
-                <button class="btn btn-secondary" id="btn-random">随机</button>
-                <button class="btn btn-primary" id="btn-analyze">分析手牌</button>
-            </div>
-        </div>
-
         <!-- 牌选择器 -->
         <div class="tile-selector-section compact">
             <div class="tile-filter">
@@ -81,6 +67,20 @@
                     </button>
                     {% endfor %}
                 </div>
+            </div>
+        </div>
+
+        <!-- 当前手牌展示区 -->
+        <div class="hand-display-section">
+            <div class="section-label">当前手牌 <span id="hand-count">0</span>/14</div>
+            <div class="message-area" id="message-area" style="display:none"></div>
+            <div class="hand-display" id="hand-display">
+                <div class="hand-placeholder">点击上方牌选择手牌...</div>
+            </div>
+            <div class="hand-actions">
+                <button class="btn btn-secondary" id="btn-clear">清空</button>
+                <button class="btn btn-secondary" id="btn-random">随机</button>
+                <button class="btn btn-primary" id="btn-analyze">分析手牌</button>
             </div>
         </div>
 

@@ -112,14 +112,26 @@ class HandAnalyzer {
         if (this.hand.length >= 14) { this.showMessage('手牌已达14张上限'); return; }
         const count = this.hand.filter(t => t === tile).length;
         if (count >= 4) { this.showMessage('同一种牌最多4张'); return; }
-        this.hand.push(tile); this.renderHand();
+        this.hand.push(tile);
+        this.sortHand();
+        this.renderHand();
+    }
+    sortHand() {
+        const order = {
+            'm1':1,'m2':2,'m3':3,'m4':4,'m5':5,'m6':6,'m7':7,'m8':8,'m9':9,
+            'p1':10,'p2':11,'p3':12,'p4':13,'p5':14,'p6':15,'p7':16,'p8':17,'p9':18,
+            's1':19,'s2':20,'s3':21,'s4':22,'s5':23,'s6':24,'s7':25,'s8':26,'s9':27,
+            'east':28,'south':29,'west':30,'north':31,'red':32,'green':33,'white':34
+        };
+        this.hand.sort((a, b) => (order[a] || 99) - (order[b] || 99));
     }
     removeTile(index) { this.hand.splice(index, 1); this.renderHand(); }
     clearHand() { this.hand = []; this.renderHand(); this.resultArea.style.display = 'none'; if (this.msgArea) { this.msgArea.innerHTML = ''; this.msgArea.style.display = 'none'; } }
     randomHand() {
         const tiles = ['m1','m2','m3','m4','m5','m6','m7','m8','m9','p1','p2','p3','p4','p5','p6','p7','p8','p9','s1','s2','s3','s4','s5','s6','s7','s8','s9','east','south','west','north','white','green','red'];
         this.hand = []; const counts = {};
-        while (this.hand.length < 13) { const t = tiles[Math.floor(Math.random() * tiles.length)]; counts[t] = (counts[t] || 0) + 1; if (counts[t] <= 4) this.hand.push(t); else counts[t]--; }
+        while (this.hand.length < 14) { const t = tiles[Math.floor(Math.random() * tiles.length)]; counts[t] = (counts[t] || 0) + 1; if (counts[t] <= 4) this.hand.push(t); else counts[t]--; }
+        this.sortHand();
         this.renderHand(); this.resultArea.style.display = 'none'; if (this.msgArea) { this.msgArea.innerHTML = ''; this.msgArea.style.display = 'none'; }
     }
     renderHand() {

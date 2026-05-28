@@ -188,16 +188,38 @@ class FuCalculator {
         if (this.hand.length >= 14) { this.showMessage('手牌已达14张上限'); return; }
         const count = this.hand.filter(t => t === tile).length;
         if (count >= 4) { this.showMessage('同一种牌最多4张'); return; }
-        this.hand.push(tile); this.renderHand();
+        this.hand.push(tile);
+        this.sortHand();
+        this.renderHand();
+    }
+    sortHand() {
+        const order = {
+            'm1':1,'m2':2,'m3':3,'m4':4,'m5':5,'m6':6,'m7':7,'m8':8,'m9':9,
+            'p1':10,'p2':11,'p3':12,'p4':13,'p5':14,'p6':15,'p7':16,'p8':17,'p9':18,
+            's1':19,'s2':20,'s3':21,'s4':22,'s5':23,'s6':24,'s7':25,'s8':26,'s9':27,
+            'east':28,'south':29,'west':30,'north':31,'red':32,'green':33,'white':34
+        };
+        this.hand.sort((a, b) => (order[a] || 99) - (order[b] || 99));
     }
     removeTile(index) { this.hand.splice(index, 1); this.renderHand(); }
     clearHand() { this.hand = []; this.renderHand(); this.resultArea.style.display = 'none'; if (this.msgArea) { this.msgArea.innerHTML = ''; this.msgArea.style.display = 'none'; } }
-    randomHand() {
-        const suits = ['m', 'p', 's']; const suit = suits[Math.floor(Math.random() * 3)];
-        this.hand = [];
-        [1, 4, 7].forEach(n => { this.hand.push(`${suit}${n}`, `${suit}${n+1}`, `${suit}${n+2}`); });
-        this.hand.push(`${suit}2`, `${suit}3`, `${suit}4`, `${suit}5`, `${suit}5`);
-        this.renderHand(); this.resultArea.style.display = 'none'; if (this.msgArea) { this.msgArea.innerHTML = ''; this.msgArea.style.display = 'none'; }
+    async randomHand() {
+        try {
+            const response = await fetch('/api/random-hand', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' }
+            });
+            const data = await response.json();
+            if (data.hand) {
+                this.hand = data.hand;
+                this.sortHand();
+                this.renderHand();
+                this.resultArea.style.display = 'none';
+                if (this.msgArea) { this.msgArea.innerHTML = ''; this.msgArea.style.display = 'none'; }
+            }
+        } catch (error) {
+            this.showMessage('生成失败: ' + error.message);
+        }
     }
     renderHand() {
         this.handCount.textContent = this.hand.length;

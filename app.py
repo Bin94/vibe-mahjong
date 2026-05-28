@@ -1,6 +1,7 @@
 from flask import Flask, render_template, jsonify, request
 from collections import Counter
-from shanten import calc_shanten, calc_shanten_cached, tiles_to_34, remaining_tiles, evaluate_hand, evaluate_tenpai, TILE_TO_INDEX, INDEX_TO_TILE, TILE_COUNT, calculate_good_shape_for_discard, calculate_good_shape_batch
+from shanten import calc_shanten, calc_shanten_cached, tiles_to_34, remaining_tiles, TILE_TO_INDEX, INDEX_TO_TILE, TILE_COUNT
+from efficiency import evaluate_hand, evaluate_tenpai, calculate_good_shape_for_discard, calculate_good_shape_batch
 
 app = Flask(__name__)
 
@@ -1437,6 +1438,209 @@ def good_shape_api():
     results = {tile: round(rate, 1) for tile, rate in results.items()}
     
     return jsonify({"rates": results})
+
+# ========== API: 随机生成和牌 ==========
+import random as rng
+
+# 预定义的和牌模板（面子+雀头组合）
+HAND_TEMPLATES = [
+    # 普通型：3面子+1雀头
+    {'type': 'normal', 'weight': 10},
+    # 七对子
+    {'type': 'chiitoitsu', 'weight': 5},
+    # 清一色
+    {'type': 'chinitsu', 'weight': 8},
+    # 混一色
+    {'type': 'honitsu', 'weight': 6},
+    # 对对和
+    {'type': 'toitoi', 'weight': 6},
+    # 断幺九
+    {'type': 'tanyao', 'weight': 7},
+]
+
+def _gen_sequence(suit):
+    """生成一组顺子"""
+    n = rng.randint(1, 7)
+    return [f'{suit}{n}', f'{suit}{n+1}', f'{suit}{n+2}']
+
+def _gen_triplet(tile):
+    """生成一组刻子"""
+    return [tile, tile, tile]
+
+def _gen_pair(tile):
+    """生成一对"""
+    return [tile, tile]
+
+def _random_normal_hand():
+    """生成普通型和牌"""
+    suits = ['m', 'p', 's']
+    hand = []
+    
+    # 生成4个面子
+    for _ in range(4):
+        if rng.random() < 0.6:
+            # 顺子
+            suit = rng.choice(suits)
+            hand.extend(_gen_sequence(suit))
+        else:
+            # 刻子
+            suit = rng.choice(suits)
+            n = rng.randint(1, 9)
+            hand.extend(_gen_triplet(f'{suit}{n}'))
+    
+    # 生成1个雀头
+    suit = rng.choice(suits)
+    n = rng.randint(1, 9)
+    hand.extend(_gen_pair(f'{suit}{n}'))
+    
+    return hand
+
+def _random_chiitoitsu():
+    """生成七对子"""
+    tiles = []
+    suits = ['m', 'p', 's']
+    while len(tiles) < 7:
+        suit = rng.choice(suits)
+        n = rng.randint(1, 9)
+        t = f'{suit}{n}'
+        if t not in tiles:
+            tiles.append(t)
+    hand = []
+    for t in tiles:
+        hand.extend([t, t])
+    return hand
+
+def _random_chinitsu():
+    """生成清一色"""
+    suit = rng.choice(['m', 'p', 's'])
+    hand = []
+    for _ in range(4):
+        if rng.random() < 0.6:
+            n = rng.randint(1, 7)
+            hand.extend([f'{suit}{n}', f'{suit}{n+1}', f'{suit}{n+2}'])
+        else:
+            n = rng.randint(1, 9)
+            hand.extend([f'{suit}{n}', f'{suit}{n}', f'{suit}{n}'])
+    # 雀头
+    n = rng.randint(1, 9)
+    hand.extend([f'{suit}{n}', f'{suit}{n}'])
+    return hand
+
+def _random_honitsu():
+    """生成混一色"""
+    suit = rng.choice(['m', 'p', 's'])
+    honors = ['east', 'south', 'west', 'north', 'white', 'green', 'red']
+    hand = []
+    
+    # 3个数牌面子
+    for _ in range(3):
+        if rng.random() < 0.6:
+            n = rng.randint(1, 7)
+            hand.extend([f'{suit}{n}', f'{suit}{n+1}', f'{suit}{n+2}'])
+        else:
+            n = rng.randint(1, 9)
+            hand.extend([f'{suit}{n}', f'{suit}{n}', f'{suit}{n}'])
+    
+    # 1个字牌面子
+    h = rng.choice(honors)
+    hand.extend([h, h, h])
+    
+    # 雀头（数牌或字牌）
+    if rng.random() < 0.5:
+        n = rng.randint(1, 9)
+        hand.extend([f'{suit}{n}', f'{suit}{n}'])
+    else:
+        h = rng.choice(honors)
+        hand.extend([h, h])
+    
+    return hand
+
+def _random_toitoi():
+    """生成对对和"""
+    suits = ['m', 'p', 's']
+    hand = []
+    for _ in range(4):
+        suit = rng.choice(Suits)
+        n = rng.randint(1, 9)
+        hand.extend([f'{suit}{n}', f'{suit}{n}', f'{suit}{n}'])
+    suit = rng.choice(Suits)
+    n = rng.randint(1, 9)
+    hand.extend([f'{suit}{n}', f'{suit}{n}'])
+    return hand
+
+def _random_tanyao():
+    """生成断幺九"""
+    valid = []
+    for s in ['m', 'p', 's']:
+        for n in range(2, 9):
+            valid.append(f'{s}{n}')
+    hand = []
+    for _ in range(4):
+        idx = rng.randint(0, len(valid) - 3)
+        hand.extend([valid[idx], valid[idx+1], valid[idx+2]])
+    t = rng.choice(valid)
+    hand.extend([t, t])
+    return hand
+
+@app.route('/api/random-hand', methods=['POST'])
+def random_hand_api():
+    """随机生成一组和牌，大番数权重更大"""
+    # 按权重选择模板类型
+    weights = [t['weight'] for t in HAND_TEMPLATES]
+    
+    for _ in range(50):
+        template = rng.choices(HAND_TEMPLATES, weights=weights, k=1)[0]
+        
+        gen_func = {
+            'normal': _random_normal_hand,
+            'chiitoitsu': _random_chiitoitsu,
+            'chinitsu': _random_chinitsu,
+            'honitsu': _random_honitsu,
+            'toitoi': _random_toitoi,
+            'tanyao': _random_tanyao,
+        }.get(template['type'], _random_normal_hand)
+        
+        hand = gen_func()
+        
+        if check_agari(hand):
+            # 排序
+            order = {f'{s}{n}': i*10+n for s in 'mps' for n in range(1,10)}
+            order.update({'east':91,'south':92,'west':93,'north':94,'white':95,'green':96,'red':97})
+            hand.sort(key=lambda t: order.get(t, 99))
+            
+            # 获取役种信息
+            yaku_names = analyze_yaku(hand)
+            YAKU_HAN_MAP = {}
+            for y in YAKU_DATA:
+                h = y['han']
+                if isinstance(h, int):
+                    YAKU_HAN_MAP[y['name']] = h
+                elif h == '役满':
+                    YAKU_HAN_MAP[y['name']] = 13
+                elif h == '双倍役满':
+                    YAKU_HAN_MAP[y['name']] = 26
+            YAKU_HAN_MAP['自风牌/场风牌'] = 1
+            YAKU_HAN_MAP['役牌-白'] = 1
+            YAKU_HAN_MAP['役牌-发'] = 1
+            YAKU_HAN_MAP['役牌-中'] = 1
+            
+            yaku_details = []
+            total_han = 0
+            for name in yaku_names:
+                han = YAKU_HAN_MAP.get(name, 0)
+                total_han += han
+                yaku_details.append({"name": name, "han": han})
+            
+            return jsonify({
+                "hand": hand,
+                "template": template['type'],
+                "yaku": yaku_details,
+                "total_han": total_han,
+            })
+    
+    # 兜底：返回一个确定的和牌
+    hand = ['m1','m2','m3','p4','p5','p6','s7','s8','s9','s7','s8','s9','m5','m5']
+    return jsonify({"hand": hand, "template": "fallback", "yaku": [], "total_han": 0})
 
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=5001)
