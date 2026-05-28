@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <script type="module" src="/src/index.ts"></script>
+    <link rel="stylesheet" href="./src/simple.min.css">
+    <title>Mahgen</title>
+</head>
+<body>
+<header>
+    <h1>Mahgen</h1>
+    <p>Mahjong Image Generator</p>
+</header>
+<main>
+    <input type="text" name="seq" id="seq" placeholder="Input Mahjong Sequence Here..." style="width: 100%" />
+    <input type="checkbox" id="checkbox" value="terms">River Mode</input>
+    <button id="btn" style="width: 100%">Generate!</button>
+
+    <figure style="text-align: center">
+        <mah-gen id="tile" data-seq="7z" data-show-err></mah-gen>
+    </figure>
+</main>
+<footer>
+    <p>Mahgen was created by <a href="https://github.com/eric200203" target="_blank">Eric Lee</a> and is licensed under the MIT license.</p>
+</footer>
+</body>
+<script type="application/javascript">
+    function render() {
+
+        /**
+         * @type {MahgenElement}
+         */
+        const img = document.querySelector('#tile');
+
+        /**
+         * @type {HTMLInputElement}
+         */
+        const checkbox = document.querySelector('#checkbox');
+        if(checkbox.checked) {
+            img.setAttribute('data-river-mode', 'true');
+        } else {
+            img.removeAttribute('data-river-mode');
+        }
+
+        /**
+         * @type {HTMLInputElement}
+         */
+        const it = document.querySelector('#seq');
+        img.setAttribute('data-seq', it.value);
+    }
+
+    /**
+     * @type {HTMLButtonElement}
+     */
+    const button = document.querySelector('#btn');
+    button.addEventListener('click', render);
+</script>
+</html>

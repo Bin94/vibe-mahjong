@@ -389,12 +389,14 @@ def remaining_tiles(hand34):
     return rem
 
 
-def evaluate_hand(hand):
+def evaluate_hand(hand, shanten_cache=None):
     """评估14张手牌的切牌选择
     hand: 当前命名的牌列表 (如 ['m1', 'm2', 'm3', ...])
+    shanten_cache: 可选的共享缓存字典
     返回: {tile: {improvements, count, shanten}} 按进张数排序
     """
-    shanten_cache = {}
+    if shanten_cache is None:
+        shanten_cache = {}
     current34 = tiles_to_34(hand)
     original_shanten = calc_shanten_cached(current34, shanten_cache)
 
@@ -484,7 +486,7 @@ def evaluate_tenpai(hand13):
 MAX_GOOD_SHAPE_DEPTH = 3
 
 
-def calculate_good_shape_rate(hand34, rem34, shanten, depth=0):
+def calculate_good_shape_rate(hand34, rem34, shanten, depth=0, shanten_cache=None):
     """计算好型率（移植自 evaluation.js calculateGoodShapeRate34）
     好型率: 衡量听牌质量或向听前进后获得好型听牌的概率
     
@@ -492,13 +494,15 @@ def calculate_good_shape_rate(hand34, rem34, shanten, depth=0):
     rem34: 剩余牌34数组
     shanten: 当前向听数
     depth: 递归深度（用于限制计算量）
+    shanten_cache: 可选的共享缓存字典
     
     返回: 0~1 的好型率
     """
     if depth > MAX_GOOD_SHAPE_DEPTH:
         return 0
 
-    shanten_cache = {}
+    if shanten_cache is None:
+        shanten_cache = {}
     current_shanten = shanten if shanten >= 0 else calc_shanten_cached(tuple(hand34), shanten_cache)
 
     # 听牌状态：判断是否为好型听牌
@@ -539,7 +543,7 @@ def calculate_good_shape_rate(hand34, rem34, shanten, depth=0):
                 hand34[d] -= 1
                 rem34[d] += 1
 
-                val = calculate_good_shape_rate(hand34, rem34, new_shanten, depth + 1)
+                val = calculate_good_shape_rate(hand34, rem34, new_shanten, depth + 1, shanten_cache=shanten_cache)
                 if val > best_path:
                     best_path = val
                     if best_path == 1.0:
@@ -559,13 +563,17 @@ def calculate_good_shape_rate(hand34, rem34, shanten, depth=0):
     return good / total if total > 0 else 0.0
 
 
-def calculate_good_shape_for_discard(hand, discard_tile):
+def calculate_good_shape_for_discard(hand, discard_tile, shanten_cache=None):
     """计算打出某张牌后的好型率
     hand: 14张手牌
     discard_tile: 要打出的牌
+    shanten_cache: 可选的共享缓存字典
     
     返回: 0~100 的好型率百分比
     """
+    if shanten_cache is None:
+        shanten_cache = {}
+    
     current34 = tiles_to_34(hand)
     tile_idx = TILE_TO_INDEX.get(discard_tile)
     if tile_idx is None:
@@ -574,8 +582,25 @@ def calculate_good_shape_for_discard(hand, discard_tile):
     current34[tile_idx] -= 1
     rem34 = remaining_tiles(current34)
 
-    shanten_cache = {}
     shanten = calc_shanten_cached(tuple(current34), shanten_cache)
 
-    rate = calculate_good_shape_rate(list(current34), list(rem34), shanten)
+    rate = calculate_good_shape_rate(list(current34), list(rem34), shanten, shanten_cache=shanten_cache)
     return max(0.0, rate * 100)
+
+
+def calculate_good_shape_batch(hand, tiles, shanten_cache=None):
+    """批量计算多张牌的好型率
+    hand: 14张手牌
+    tiles: 要计算的牌列表
+    shanten_cache: 可选的共享缓存字典
+    
+    返回: {tile: rate} 字典
+    """
+    if shanten_cache is None:
+        shanten_cache = {}
+    
+    results = {}
+    for tile in tiles:
+        results[tile] = calculate_good_shape_for_discard(hand, tile, shanten_cache)
+    
+    return results

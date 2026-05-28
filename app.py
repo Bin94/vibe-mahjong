@@ -1,6 +1,6 @@
 from flask import Flask, render_template, jsonify, request
 from collections import Counter
-from shanten import calc_shanten, calc_shanten_cached, tiles_to_34, remaining_tiles, evaluate_hand, evaluate_tenpai, TILE_TO_INDEX, INDEX_TO_TILE, TILE_COUNT, calculate_good_shape_for_discard
+from shanten import calc_shanten, calc_shanten_cached, tiles_to_34, remaining_tiles, evaluate_hand, evaluate_tenpai, TILE_TO_INDEX, INDEX_TO_TILE, TILE_COUNT, calculate_good_shape_for_discard, calculate_good_shape_batch
 
 app = Flask(__name__)
 
@@ -566,16 +566,12 @@ def analyze_hand_efficiency(hand):
                     else:
                         wait_types[w_tile] = ['进张']
                 
-                # 计算好型率
-                good_shape_rate = calculate_good_shape_for_discard(hand, tile)
-                
                 results.append({
                     'tile': tile,
                     'waiting_tiles': list(improvements.keys()),
                     'count': count,
                     'waiting_types': wait_types,
-                    'shanten': shanten,
-                    'good_shape_rate': good_shape_rate
+                    'shanten': shanten
                 })
     
     else:
@@ -1415,6 +1411,32 @@ def calculate_fu_api():
         "anim_level": anim_level,
         "is_yakuman": has_yakuman,
     })
+
+# ========== API: 异步好型率计算 ==========
+@app.route('/api/good-shape', methods=['POST'])
+def good_shape_api():
+    """异步计算好型率（方案四）
+    接收手牌和切牌列表，返回每张牌的好型率
+    使用共享缓存加速计算（方案一）
+    """
+    data = request.get_json()
+    hand = data.get('hand', [])
+    tiles = data.get('tiles', [])
+    
+    if not hand or len(hand) != 14:
+        return jsonify({"error": "手牌数量不合法"}), 400
+    
+    if not tiles:
+        return jsonify({"error": "未指定切牌列表"}), 400
+    
+    # 使用共享缓存（方案一）
+    shanten_cache = {}
+    results = calculate_good_shape_batch(hand, tiles, shanten_cache)
+    
+    # 四舍五入到1位小数
+    results = {tile: round(rate, 1) for tile, rate in results.items()}
+    
+    return jsonify({"rates": results})
 
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=5001)

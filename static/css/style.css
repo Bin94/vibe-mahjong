@@ -1891,6 +1891,12 @@ body[data-theme="wa"] .tenpai-yaku-total {
     color: #ff6b6b;
 }
 
+.eff-rate.rate-loading {
+    color: var(--text-muted);
+    font-style: italic;
+    font-size: 0.75rem;
+}
+
 /* Spinner and Progress */
 .spinner {
     display: inline-block;

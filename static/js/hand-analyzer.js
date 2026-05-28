@@ -231,7 +231,7 @@ class HandAnalyzer {
                 Object.values(data.efficiency[0].waiting_types).some(v => v.types && v.types.includes('进张'));
             const headerText = isTenpaiResult ? '可进张牌（含役种）' : '可听的牌（含役种）';
             
-            html += `<div class="result-section"><div class="result-title">牌效分析建议（打出哪张）</div><div class="result-content">`;
+            html += `<div class="result-section" id="efficiency-section"><div class="result-title">牌效分析建议（打出哪张）</div><div class="result-content">`;
             html += `<div class="efficiency-table"><div class="efficiency-header"><span>打</span><span>进张数</span><span>好型率</span><span>${headerText}</span></div>`;
             for (const eff of data.efficiency) {
                 const tilesHtml = eff.waiting_tiles.map((t, i) => {
@@ -252,11 +252,13 @@ class HandAnalyzer {
                         return `<span class="eff-tile"><img src="${eff.waiting_tiles_png[i]}" class="eff-tile-img" alt="${t}"><span class="eff-tile-types">${types}</span><span class="eff-tile-yaku">${yakuHtml}</span></span>`;
                     }
                 }).join('');
-                const goodShapeRate = eff.good_shape_rate !== undefined ? eff.good_shape_rate : 0;
-                const rateClass = goodShapeRate >= 70 ? 'rate-high' : (goodShapeRate >= 40 ? 'rate-mid' : 'rate-low');
-                html += `<div class="efficiency-row"><span class="eff-discard"><img src="${eff.tile_png}" class="eff-discard-img" alt="${eff.tile}"><span>${eff.tile_name}</span></span><span class="eff-count">${eff.count}张</span><span class="eff-rate ${rateClass}">${goodShapeRate.toFixed(1)}%</span><span class="eff-waiting">${tilesHtml}</span></div>`;
+                // 好型率初始显示为"计算中..."
+                html += `<div class="efficiency-row" data-tile="${eff.tile}"><span class="eff-discard"><img src="${eff.tile_png}" class="eff-discard-img" alt="${eff.tile}"><span>${eff.tile_name}</span></span><span class="eff-count">${eff.count}张</span><span class="eff-rate rate-loading" id="rate-${eff.tile}">计算中...</span><span class="eff-waiting">${tilesHtml}</span></div>`;
             }
             html += `</div></div></div>`;
+            
+            // 异步获取好型率（方案四）
+            this.fetchGoodShapeRates(data.efficiency);
         }
         
         if (data.tenpai_tiles && data.tenpai_tiles.length > 0) {
@@ -309,6 +311,40 @@ class HandAnalyzer {
         }
         this.resultArea.scrollIntoView({ behavior: 'smooth' });
     }
+    
+    async fetchGoodShapeRates(efficiency) {
+        // 异步获取好型率（方案四）
+        const tiles = efficiency.map(eff => eff.tile);
+        try {
+            const response = await fetch('/api/good-shape', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ hand: this.hand, tiles: tiles })
+            });
+            const data = await response.json();
+            if (data.rates) {
+                for (const [tile, rate] of Object.entries(data.rates)) {
+                    const rateEl = document.getElementById('rate-' + tile);
+                    if (rateEl) {
+                        const rateClass = rate >= 70 ? 'rate-high' : (rate >= 40 ? 'rate-mid' : 'rate-low');
+                        rateEl.className = 'eff-rate ' + rateClass;
+                        rateEl.textContent = rate.toFixed(1) + '%';
+                    }
+                }
+            }
+        } catch (error) {
+            console.error('好型率计算失败:', error);
+            // 失败时显示"--
+            tiles.forEach(tile => {
+                const rateEl = document.getElementById('rate-' + tile);
+                if (rateEl) {
+                    rateEl.className = 'eff-rate';
+                    rateEl.textContent = '--';
+                }
+            });
+        }
+    }
+    
     showMessage(msg) {
         if (!this.msgArea) {
             const div = document.createElement('div'); div.className = 'warning-message'; div.textContent = msg; div.style.animation = 'fadeIn 0.3s ease';
